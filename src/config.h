@@ -13,6 +13,7 @@
 
 // Adafruit GFX support enabled by default.
 // Can be disabled either by defining GEM_DISABLE_ADAFRUIT_GFX (via compiler flag or define) or manual edition here.
+#define GEM_DISABLE_ADAFRUIT_GFX
 #if !defined(GEM_DISABLE_ADAFRUIT_GFX)
 #include "config/enable-adafruit-gfx.h"     // Enable Adafruit GFX version of GEM
 #endif

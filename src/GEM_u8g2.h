@@ -196,7 +196,22 @@ class GEM_u8g2 {
     /* VALUE EDIT */
 
     bool _editValueMode;
+    byte _editSpecialAction;     // 0=none, 1=backspace icon, 2=confirm icon
+    char _editSpecialSavedChar;  // char saved when entering special state
     byte _editValueType;
+
+    /* KEY REPEAT (edit mode UP/DOWN) and OK long-press */
+    byte     _repeatUpPin   = 255;  // 255 = not configured
+    byte     _repeatDownPin = 255;
+    byte     _repeatOkPin   = 255;
+    byte     _repeatLastKey = 0;
+    uint32_t _repeatHeldSince  = 0;
+    uint32_t _repeatLastFired  = 0;
+    uint32_t _okHeldSince      = 0;
+    bool     _okLongFired      = false;
+    static const uint32_t REPEAT_DELAY_MS    = 500;
+    static const uint32_t REPEAT_INTERVAL_MS =  80;
+    static const uint32_t OK_LONGPRESS_MS    = 2000;
     byte _editValueLength;
     byte _editValueCursorPosition;
     byte _editValueVirtualCursorPosition;

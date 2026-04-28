@@ -2,6 +2,12 @@
 ![GEM](http://spirik.ru/downloads/misc/gem/gem-logo-border-outline.svg)
 ===========
 
+> **This is a fork of [Spirik/GEM](https://github.com/Spirik/GEM) with the following additions for Industruino D21G (UC1701 MINI12864 / U8g2):**
+>
+> - **Edit mode key repeat**: holding UP or DOWN in edit mode scrolls continuously (500 ms delay, 80 ms interval) — implemented in `readyForKey()`.
+> - **OK long-press (2 s)**: saves the current value and exits edit mode immediately; suppresses re-entry after release.
+> - **Adafruit GFX disabled by default**: `GEM_DISABLE_ADAFRUIT_GFX` is defined in `config.h`, so the Adafruit GFX library is not required.
+
 GEM (a.k.a. *Good Enough Menu*) - Arduino library for creation of graphic multi-level menu with editable menu items, such as variables (supports `int`, `byte`, `float`, `double`, `bool`, `char[17]` data types) and option selects. User-defined callback function can be specified to invoke when menu item is saved.
   
 Supports buttons that can invoke user-defined actions and create action-specific context, which can have its own enter (setup) and exit callbacks as well as loop function.

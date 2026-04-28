@@ -136,6 +136,35 @@ const GEMSprite checkboxChecked = {checkboxChecked_width, checkboxChecked_height
 
 const GEMSprite selectArrows = {selectArrows_width, selectArrows_height, selectArrows_bits};
 
+// Custom 3-button edit sprites (6x8 XBM, LSB = leftmost pixel)
+// editConfirm: checkmark ✓  (UP past end of range → confirm/save)
+//   .....X   row1: col5  (long arm tip, upper-right)
+//   ....X.   row2: col4
+//   .X.X..   row3: col1 (short arm) + col3 (long arm)  ← short arm 2px higher
+//   .XX...   row4: col1+col2 (knee, where both arms meet)
+//   ......   row5-6: blank
+#define editConfirm_width  6
+#define editConfirm_height 8
+static const unsigned char editConfirm_bits [] U8X8_PROGMEM = {
+  0xC0, 0xE0, 0xD2, 0xCA, 0xC6, 0xC0, 0xC0, 0xC0
+};
+
+// editDelete: X cross ✗  (DOWN past start of range → backspace/delete)
+//   X....X   0xE1
+//   .X..X.   0xD2
+//   ..XX..   0xCC
+//   ..XX..   0xCC
+//   .X..X.   0xD2
+//   X....X   0xE1
+#define editDelete_width  6
+#define editDelete_height 8
+static const unsigned char editDelete_bits [] U8X8_PROGMEM = {
+  0xC0, 0xE1, 0xD2, 0xCC, 0xCC, 0xD2, 0xE1, 0xC0
+};
+
+const GEMSprite editConfirmSprite = {editConfirm_width, editConfirm_height, editConfirm_bits};
+const GEMSprite editDeleteSprite  = {editDelete_width,  editDelete_height,  editDelete_bits};
+
 GEM_u8g2::GEM_u8g2(U8G2& u8g2_, byte menuPointerType_, byte menuItemsPerScreen_, byte menuItemHeight_, byte menuPageScreenTopOffset_, byte menuValuesLeftOffset_)
   : _u8g2(u8g2_)
 {
@@ -148,6 +177,8 @@ GEM_u8g2::GEM_u8g2(U8G2& u8g2_, byte menuPointerType_, byte menuItemsPerScreen_,
   _splash = logo;
   clearContext();
   _editValueMode = false;
+  _editSpecialAction = 0;
+  _editSpecialSavedChar = '\0';
   _editValueCursorPosition = 0;
   memset(_valueString, '\0', GEM_STR_LEN - 1);
   _valueSelectNum = -1;
@@ -161,6 +192,8 @@ GEM_u8g2::GEM_u8g2(U8G2& u8g2_, GEMAppearance appearance_)
   _splash = logo;
   clearContext();
   _editValueMode = false;
+  _editSpecialAction = 0;
+  _editSpecialSavedChar = '\0';
   _editValueCursorPosition = 0;
   memset(_valueString, '\0', GEM_STR_LEN - 1);
   _valueSelectNum = -1;
@@ -456,6 +489,13 @@ void GEM_u8g2::printMenuItems() {
               if (_editValueMode && menuItemTmp == _menuPageCurrent->getCurrentMenuItem()) {
                 printMenuItemValue(_valueString, 0, _editValueVirtualCursorPosition - _editValueCursorPosition);
                 drawEditValueCursor();
+                if (_editSpecialAction != 0) {
+                  byte menuItemFontSize = getMenuItemFontSize();
+                  byte xSprite = getCurrentAppearance()->menuValuesLeftOffset + _editValueCursorPosition * _menuItemFont[menuItemFontSize].width - 1;
+                  drawEditValueCursor();  // second call undoes XOR → cursor area becomes black
+                  _u8g2.setDrawColor(1);  // draw white-on-black
+                  drawSprite(xSprite, yDraw, (_editSpecialAction == 1) ? editDeleteSprite : editConfirmSprite);
+                }
               } else {
                 itoa(*(int*)menuItemTmp->linkedVariable, valueStringTmp, 10);
                 printMenuItemValue(valueStringTmp);
@@ -465,6 +505,13 @@ void GEM_u8g2::printMenuItems() {
               if (_editValueMode && menuItemTmp == _menuPageCurrent->getCurrentMenuItem()) {
                 printMenuItemValue(_valueString, 0, _editValueVirtualCursorPosition - _editValueCursorPosition);
                 drawEditValueCursor();
+                if (_editSpecialAction != 0) {
+                  byte menuItemFontSize = getMenuItemFontSize();
+                  byte xSprite = getCurrentAppearance()->menuValuesLeftOffset + _editValueCursorPosition * _menuItemFont[menuItemFontSize].width - 1;
+                  drawEditValueCursor();  // second call undoes XOR → cursor area becomes black
+                  _u8g2.setDrawColor(1);  // draw white-on-black
+                  drawSprite(xSprite, yDraw, (_editSpecialAction == 1) ? editDeleteSprite : editConfirmSprite);
+                }
               } else {
                 itoa(*(byte*)menuItemTmp->linkedVariable, valueStringTmp, 10);
                 printMenuItemValue(valueStringTmp);
@@ -474,6 +521,13 @@ void GEM_u8g2::printMenuItems() {
               if (_editValueMode && menuItemTmp == _menuPageCurrent->getCurrentMenuItem()) {
                 printMenuItemValue(_valueString, 0, _editValueVirtualCursorPosition - _editValueCursorPosition);
                 drawEditValueCursor();
+                if (_editSpecialAction != 0) {
+                  byte menuItemFontSize = getMenuItemFontSize();
+                  byte xSprite = getCurrentAppearance()->menuValuesLeftOffset + _editValueCursorPosition * _menuItemFont[menuItemFontSize].width - 1;
+                  drawEditValueCursor();  // second call undoes XOR → cursor area becomes black
+                  _u8g2.setDrawColor(1);  // draw white-on-black
+                  drawSprite(xSprite, yDraw, (_editSpecialAction == 1) ? editDeleteSprite : editConfirmSprite);
+                }
               } else {
                 printMenuItemValue((char*)menuItemTmp->linkedVariable);
               }
@@ -786,6 +840,7 @@ void GEM_u8g2::checkboxToggle() {
 void GEM_u8g2::initEditValueCursor() {
   _editValueCursorPosition = 0;
   _editValueVirtualCursorPosition = 0;
+  _editSpecialAction = 0;
   drawMenu();
 }
 
@@ -823,9 +878,26 @@ void GEM_u8g2::drawEditValueCursor() {
 }
 
 void GEM_u8g2::nextEditValueDigit() {
+  if (_editSpecialAction == 2) {
+    // Already at confirm – UP keeps us here (icon stays visible)
+    drawMenu();
+    return;
+  }
+  if (_editSpecialAction == 1) {
+    // In backspace state – UP exits it, char in _valueString is unchanged
+    _editSpecialAction = 0;
+    drawMenu();
+    return;
+  }
   GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
   char chr = _valueString[_editValueVirtualCursorPosition];
   byte code = (byte)chr;
+  // At end of string (null terminator): UP goes directly to CONFIRM
+  if (code == 0 && (_editValueType == GEM_VAL_INTEGER || _editValueType == GEM_VAL_BYTE || _editValueType == GEM_VAL_CHAR)) {
+    _editSpecialAction = 2;
+    drawMenu();
+    return;
+  }
   if (_editValueType == GEM_VAL_CHAR) {
     if (menuItemTmp->adjustedAsciiOrder) {
       switch (code) {
@@ -851,7 +923,10 @@ void GEM_u8g2::nextEditValueDigit() {
           code = GEM_CHAR_CODE_SPACE;
           break;
         case GEM_CHAR_CODE_TILDA:
-          code = GEM_CHAR_CODE_SPACE;
+          // Enter CONFIRM state – leave _valueString unchanged, just show icon
+          _editSpecialAction = 2;
+          drawMenu();
+          return;
           break;
         /*
         // WIP for Cyrillic values support
@@ -885,10 +960,20 @@ void GEM_u8g2::nextEditValueDigit() {
         code = GEM_CHAR_CODE_0;
         break;
       case GEM_CHAR_CODE_9:
-        code = (_editValueCursorPosition == 0 && (_editValueType == GEM_VAL_INTEGER || _editValueType == GEM_VAL_FLOAT || _editValueType == GEM_VAL_DOUBLE)) ? GEM_CHAR_CODE_MINUS : GEM_CHAR_CODE_SPACE;
+        if (_editValueCursorPosition == 0 && (_editValueType == GEM_VAL_INTEGER || _editValueType == GEM_VAL_FLOAT || _editValueType == GEM_VAL_DOUBLE)) {
+          code = GEM_CHAR_CODE_MINUS;  // pos-0: go to minus first
+        } else {
+          // Enter CONFIRM state – leave _valueString unchanged, just show icon
+          _editSpecialAction = 2;
+          drawMenu();
+          return;
+        }
         break;
       case GEM_CHAR_CODE_MINUS:
-        code = GEM_CHAR_CODE_SPACE;
+        // Enter CONFIRM state – leave _valueString unchanged, just show icon
+        _editSpecialAction = 2;
+        drawMenu();
+        return;
         break;
       case GEM_CHAR_CODE_SPACE:
         code = (_editValueCursorPosition != 0 && (_editValueType == GEM_VAL_FLOAT || _editValueType == GEM_VAL_DOUBLE)) ? GEM_CHAR_CODE_DOT : GEM_CHAR_CODE_0;
@@ -905,6 +990,17 @@ void GEM_u8g2::nextEditValueDigit() {
 }
 
 void GEM_u8g2::prevEditValueDigit() {
+  if (_editSpecialAction == 1) {
+    // Already at backspace – DOWN keeps us here (icon stays visible)
+    drawMenu();
+    return;
+  }
+  if (_editSpecialAction == 2) {
+    // In confirm state – DOWN exits it, char in _valueString is unchanged
+    _editSpecialAction = 0;
+    drawMenu();
+    return;
+  }
   GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
   char chr = _valueString[_editValueVirtualCursorPosition];
   byte code = (byte)chr;
@@ -933,7 +1029,10 @@ void GEM_u8g2::prevEditValueDigit() {
           code = GEM_CHAR_CODE_TILDA;
           break;
         case GEM_CHAR_CODE_SPACE:
-          code = GEM_CHAR_CODE_TILDA;
+          // Enter BACKSPACE state – leave _valueString unchanged, just show icon
+          _editSpecialAction = 1;
+          drawMenu();
+          return;
           break;
         /*
         // WIP for Cyrillic values support
@@ -973,10 +1072,20 @@ void GEM_u8g2::prevEditValueDigit() {
         code = GEM_CHAR_CODE_9;
         break;
       case GEM_CHAR_CODE_0:
-        code = (_editValueCursorPosition != 0 && (_editValueType == GEM_VAL_FLOAT || _editValueType == GEM_VAL_DOUBLE)) ? GEM_CHAR_CODE_DOT : GEM_CHAR_CODE_SPACE;
+        if (_editValueCursorPosition != 0 && (_editValueType == GEM_VAL_FLOAT || _editValueType == GEM_VAL_DOUBLE)) {
+          code = GEM_CHAR_CODE_DOT;
+        } else {
+          // Skip SPACE intermediate – go directly to BACKSPACE state
+          _editSpecialAction = 1;
+          drawMenu();
+          return;
+        }
         break;
       case GEM_CHAR_CODE_SPACE:
-        code = (_editValueCursorPosition == 0 && (_editValueType == GEM_VAL_INTEGER || _editValueType == GEM_VAL_FLOAT || _editValueType == GEM_VAL_DOUBLE)) ? GEM_CHAR_CODE_MINUS : GEM_CHAR_CODE_9;
+        // Enter BACKSPACE state – leave _valueString unchanged, just show icon
+        _editSpecialAction = 1;
+        drawMenu();
+        return;
         break;
       case GEM_CHAR_CODE_DOT:
         code = GEM_CHAR_CODE_SPACE;
@@ -1175,6 +1284,7 @@ void GEM_u8g2::resetEditValueState() {
   memset(_valueString, '\0', GEM_STR_LEN - 1);
   _valueSelectNum = -1;
   _editValueMode = false;
+  _editSpecialAction = 0;
 }
 
 void GEM_u8g2::exitEditValue() {
@@ -1213,6 +1323,64 @@ char* GEM_u8g2::trimString(char* str) {
 bool GEM_u8g2::readyForKey() {
   if ( (context.loop == nullptr) ||
       ((context.loop != nullptr) && (context.allowExit)) ) {
+
+    // Suppress all input while OK is still physically held after a long-press.
+    // On release: drain the pending u8g2 event so menu_loop never sees the OK.
+    if (_okLongFired) {
+      if (_repeatOkPin != 255 && digitalRead(_repeatOkPin) == LOW) {
+        return false;  // still held – block
+      } else {
+        _u8g2.getMenuEvent();  // drain the release event from u8g2's queue
+        _okLongFired = false;
+        _okHeldSince = 0;
+        return false;  // skip this cycle too, so menu_loop sees nothing
+      }
+    }
+
+    // Key-repeat for UP/DOWN, and OK long-press to save – only in edit mode
+    if (_editValueMode) {
+      // Lazy-read pin numbers from u8g2's internal state (set via u8g2.begin())
+      if (_repeatUpPin == 255) {
+        _repeatUpPin   = _u8g2.getU8x8()->pins[U8X8_PIN_MENU_UP];
+        _repeatDownPin = _u8g2.getU8x8()->pins[U8X8_PIN_MENU_DOWN];
+        _repeatOkPin   = _u8g2.getU8x8()->pins[U8X8_PIN_MENU_SELECT];
+      }
+      uint32_t now = millis();
+
+      // UP/DOWN repeat
+      bool upHeld   = (_repeatUpPin   != 255) && (digitalRead(_repeatUpPin)   == LOW);
+      bool downHeld = (_repeatDownPin != 255) && (digitalRead(_repeatDownPin) == LOW);
+      byte heldKey  = upHeld ? GEM_KEY_UP : (downHeld ? GEM_KEY_DOWN : 0);
+
+      if (heldKey != 0) {
+        if (heldKey != _repeatLastKey) {
+          _repeatLastKey   = heldKey;
+          _repeatHeldSince = now;
+          _repeatLastFired = now;
+        } else if ((now - _repeatHeldSince  >= REPEAT_DELAY_MS) &&
+                   (now - _repeatLastFired  >= REPEAT_INTERVAL_MS)) {
+          _repeatLastFired = now;
+          registerKeyPress(heldKey);
+        }
+      } else {
+        _repeatLastKey = 0;
+      }
+
+      // OK long-press (2s) → save and exit edit mode immediately
+      bool okHeld = (_repeatOkPin != 255) && (digitalRead(_repeatOkPin) == LOW);
+      if (okHeld) {
+        if (_okHeldSince == 0) {
+          _okHeldSince = now;
+        } else if (!_okLongFired && (now - _okHeldSince >= OK_LONGPRESS_MS)) {
+          _okLongFired     = true;   // blocks input until button is released
+          _editSpecialAction = 2;    // force confirm state → OK saves immediately
+          registerKeyPress(GEM_KEY_OK);
+        }
+      } else {
+        _okHeldSince = 0;
+      }
+    }
+
     return true;
   } else {
     registerKeyPress(GEM_KEY_NONE);
@@ -1293,7 +1461,26 @@ void GEM_u8g2::dispatchKeyPress() {
           cancelEditValue();
           break;
         case GEM_KEY_OK:
-          saveEditValue();
+          if (_editSpecialAction == 2) {
+            // CONFIRM icon: save the value
+            _editSpecialAction = 0;
+            saveEditValue();
+          } else if (_editSpecialAction == 1) {
+            // BACKSPACE icon: truncate string at cursor and go back one position
+            _editSpecialAction = 0;
+            _valueString[_editValueVirtualCursorPosition] = '\0';
+            if (_editValueVirtualCursorPosition > 0) {
+              prevEditValueCursorPosition();
+            } else {
+              drawMenu();
+            }
+          } else if (_editValueType == GEM_VAL_SELECT || _editValueType == GEM_VAL_SPINNER) {
+            // SELECT / SPINNER: OK still means save (no cursor to advance)
+            saveEditValue();
+          } else {
+            // Normal char/digit: advance cursor to next position
+            nextEditValueCursorPosition();
+          }
           break;
       }
     } else {
