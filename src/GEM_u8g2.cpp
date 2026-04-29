@@ -1068,7 +1068,8 @@ void GEM_u8g2::nextEditValueDigit() {
           code = GEM_CHAR_CODE_SPACE;
           break;
         case GEM_CHAR_CODE_TILDA:
-          // Enter CONFIRM state – leave _valueString unchanged, just show icon
+          // Enter CONFIRM state – truncate string at cursor position and show icon
+          _valueString[_editValueVirtualCursorPosition] = '\0';
           _editSpecialAction = 2;
           drawMenu();
           return;
