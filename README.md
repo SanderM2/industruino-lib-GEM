@@ -4,8 +4,35 @@
 
 > **This is a fork of [Spirik/GEM](https://github.com/Spirik/GEM) with the following additions for Industruino D21G (UC1701 MINI12864 / U8g2):**
 >
-> - **Edit mode key repeat**: holding UP or DOWN in edit mode scrolls continuously (500 ms delay, 80 ms interval) — implemented in `readyForKey()`.
-> - **OK long-press (2 s)**: saves the current value and exits edit mode immediately; suppresses re-entry after release.
+> ### 3-button navigation (Industruino D21G)
+>
+> The Industruino D21G has only **UP**, **DOWN**, and **OK** — no LEFT, RIGHT, or CANCEL buttons.
+> This fork is designed to work fully with three buttons:
+>
+> | Situation | UP | DOWN | OK |
+> |---|---|---|---|
+> | Menu browse | Previous item | Next item | Select / enter |
+> | Edit int / byte / char | Increment digit | Decrement digit | Advance cursor → save on last |
+> | Edit bool | Toggle | Toggle | Toggle |
+> | Edit select / spinner | Previous option | Next option | Save |
+> | Edit IP address | Increment octet | Decrement octet | Next octet → save on 4th |
+> | OK long-press (2 s) | — | — | Save immediately from any edit position |
+>
+> ### Added features
+>
+> - **3-button key repeat in edit mode**: holding UP or DOWN fires repeatedly after an initial delay (500 ms delay, 80 ms interval) — implemented in `readyForKey()`.
+> - **OK long-press (2 s)**: saves the current value and exits edit mode immediately; suppresses accidental re-entry after release.
+> - **`GEM_VAL_IP` — IPv4 address type**: new `GEMItem` constructor accepting `uint8_t[4]`. Displays as `AAA.BBB.CCC.DDD`. UP/DOWN changes the highlighted octet (0–255, wraps); OK advances to the next octet and saves on the 4th.
+>   ```cpp
+>   uint8_t myIp[4] = {192, 168, 1, 1};
+>   GEMItem menuItemIp("Server IP", myIp);
+>   GEMItem menuItemIp("Server IP", myIp, onSaved); // with callback
+>   ```
+> - **Two-line layout** (`setTwoLineItems()`): for `CHAR` and `IP` items the label is drawn on the first line and the value full-width on the second line, so long values are never clipped. All other types (bool, int, select, links, buttons) stay single-line. Scrolling is height-aware per item.
+>   ```cpp
+>   gem.setTwoLineItems();     // call before gem.init()
+>   gem.setTwoLineItems(false); // revert to single-line
+>   ```
 > - **Adafruit GFX disabled by default**: `GEM_DISABLE_ADAFRUIT_GFX` is defined in `config.h`, so the Adafruit GFX library is not required.
 
 GEM (a.k.a. *Good Enough Menu*) - Arduino library for creation of graphic multi-level menu with editable menu items, such as variables (supports `int`, `byte`, `float`, `double`, `bool`, `char[17]` data types) and option selects. User-defined callback function can be specified to invoke when menu item is saved.

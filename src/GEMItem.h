@@ -323,6 +323,16 @@ class GEMItem {
     GEMItem(const char* title_, float& linkedVariable_, bool readonly_ = false);
     GEMItem(const char* title_, double& linkedVariable_, bool readonly_ = false);
     /* 
+      Constructors for menu item that represents an IPv4 address (uint8_t[4])
+      @param 'title_' - title of the menu item displayed on the screen
+      @param 'linkedVariable_' - pointer to uint8_t[4] array holding the four octets
+      @param 'callbackAction_' (optional) - pointer to callback function executed when value is saved
+      @param 'readonly_' (optional) - set readonly mode
+    */
+    GEMItem(const char* title_, uint8_t* linkedVariable_, bool readonly_ = false);
+    GEMItem(const char* title_, uint8_t* linkedVariable_, void (*callbackAction_)());
+    GEMItem(const char* title_, uint8_t* linkedVariable_, void (*callbackAction_)(GEMCallbackData));
+    /* 
       Constructor for menu item that represents link to another menu page (via reference)
       @param 'title_' - title of the menu item displayed on the screen
       @param 'linkedPage_' - reference to GEMPage menu page that menu item is associated with

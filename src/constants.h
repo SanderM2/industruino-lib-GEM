@@ -60,6 +60,7 @@
 #define GEM_VAL_FLOAT 5    // Associated variable is of type float
 #define GEM_VAL_DOUBLE 6   // Associated variable is of type double
 #define GEM_VAL_SPINNER 7  // Associated variable is either of type int, byte, float or double with spinner to increment or decrement value with given step
+#define GEM_VAL_IP      8  // Associated variable is of type uint8_t[4] (IPv4 address, four octets 0-255)
 
 // Macro constant (alias) for loop modifier of selects (GEMSelect) and range spinners (GEMSpinner)
 #define GEM_LOOP true

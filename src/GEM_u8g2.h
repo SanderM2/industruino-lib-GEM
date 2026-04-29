@@ -130,6 +130,7 @@ class GEM_u8g2 {
     GEM_u8g2& setFontSmall(const uint8_t* font, uint8_t width = 4, uint8_t height = 6); // Set small font
     GEM_u8g2& setFontSmall();                                   // Revert small font to default value (with respect to _UTF8Enabled flag)
     GEM_u8g2& invertKeysDuringEdit(bool invert = true);         // Turn inverted order of characters during edit mode on or off
+    GEM_u8g2& setTwoLineItems(bool mode = true);                // Put item title on first line and value on second line (full width) for VAL items
     GEM_VIRTUAL GEM_u8g2& init();                               // Init the menu (set necessary settings, display GEM splash screen, etc.)
     GEM_VIRTUAL GEM_u8g2& reInit();                             // Reinitialize the menu (call U8g2::initDisplay() and then reapply GEM specific settings)
     GEM_u8g2& setMenuPageCurrent(GEMPage& menuPageCurrent);     // Set supplied menu page as current
@@ -165,6 +166,11 @@ class GEM_u8g2 {
     FontFamiliesU8g2 _fontFamilies = {GEM_FONT_BIG, GEM_FONT_SMALL};
     bool _UTF8Enabled = false;
     bool _invertKeysDuringEdit = false;
+    bool _twoLineItems = false;
+    byte getEffectiveItemHeight();
+    bool itemNeedsTwoLine(GEMItem* item);
+    byte getItemHeight(GEMItem* item);
+    byte getFirstVisibleItemIndex();
     GEM_VIRTUAL byte getMenuItemTitleLength();
     GEM_VIRTUAL byte getMenuItemValueLength();
     GEMSprite _splash;
@@ -199,6 +205,7 @@ class GEM_u8g2 {
     byte _editSpecialAction;     // 0=none, 1=backspace icon, 2=confirm icon
     char _editSpecialSavedChar;  // char saved when entering special state
     byte _editValueType;
+    uint8_t _editIpOctets[4];   // working copy of IP octets during GEM_VAL_IP edit
 
     /* KEY REPEAT (edit mode UP/DOWN) and OK long-press */
     byte     _repeatUpPin   = 255;  // 255 = not configured
@@ -235,6 +242,8 @@ class GEM_u8g2 {
     GEM_VIRTUAL void nextEditValueSpinner();
     GEM_VIRTUAL void prevEditValueSpinner();
     #endif
+    GEM_VIRTUAL void nextEditValueIpOctet();
+    GEM_VIRTUAL void prevEditValueIpOctet();
     GEM_VIRTUAL void saveEditValue();
     GEM_VIRTUAL void cancelEditValue();
     GEM_VIRTUAL void resetEditValueState();

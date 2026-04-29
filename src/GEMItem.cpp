@@ -1623,6 +1623,37 @@ GEMItem::GEMItem(const char* title_, double& linkedVariable_, bool readonly_)
 
 //---
 
+// GEM_VAL_IP: IPv4 address (uint8_t[4])
+
+GEMItem::GEMItem(const char* title_, uint8_t* linkedVariable_, bool readonly_)
+  : title(title_)
+  , linkedVariable(linkedVariable_)
+  , linkedType(GEM_VAL_IP)
+  , type(GEM_ITEM_VAL)
+  , readonly(readonly_)
+{ }
+
+GEMItem::GEMItem(const char* title_, uint8_t* linkedVariable_, void (*callbackAction_)())
+  : title(title_)
+  , linkedVariable(linkedVariable_)
+  , linkedType(GEM_VAL_IP)
+  , type(GEM_ITEM_VAL)
+  , callbackAction(callbackAction_)
+{ }
+
+GEMItem::GEMItem(const char* title_, uint8_t* linkedVariable_, void (*callbackAction_)(GEMCallbackData))
+  : title(title_)
+  , linkedVariable(linkedVariable_)
+  , linkedType(GEM_VAL_IP)
+  , type(GEM_ITEM_VAL)
+  , callbackAction(nullptr)
+  , callbackWithArgs(true)
+{
+  callbackActionArg = callbackAction_;
+}
+
+//---
+
 GEMItem::GEMItem(const char* title_, GEMPage& linkedPage_, bool readonly_)
   : title(title_)
   , type(GEM_ITEM_LINK)
